@@ -301,6 +301,17 @@ bool probeDbus(const std::string& interface,
             continue;
         }
 
+        /* Skip the object if it implements the Item interface and Present is false */
+        auto item = interfaces.find("xyz.openbmc_project.Inventory.Item");
+        if (item != interfaces.end())
+        {
+            auto present = item->second.find("Present");
+            if (!(present == item->second.end() || std::get<bool>(present->second)))
+            {
+                continue;
+            }
+        }
+
         foundProbe = true;
 
         bool deviceMatches = true;
