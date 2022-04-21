@@ -577,6 +577,20 @@ void PerformScan::updateSystemConfiguration(
     }
 }
 
+static nlohmann::json makeIterableProbe(const nlohmann::json& probe)
+{
+    if (probe.type() != nlohmann::json::value_t::array)
+    {
+        nlohmann::json probeCommand = nlohmann::json::array();
+        probeCommand.push_back(probe);
+        return probeCommand;
+    }
+    else
+    {
+        return {probe};
+    }
+}
+
 static std::string extractDBusProbeInterface(const std::string* probe)
 {
     // syntax requires probe before first open brace
@@ -637,16 +651,7 @@ void PerformScan::run()
         }
 
         nlohmann::json& recordRef = *it;
-        nlohmann::json probeCommand;
-        if ((*findProbe).type() != nlohmann::json::value_t::array)
-        {
-            probeCommand = nlohmann::json::array();
-            probeCommand.push_back(*findProbe);
-        }
-        else
-        {
-            probeCommand = *findProbe;
-        }
+        nlohmann::json probeCommand = makeIterableProbe(*findProbe);
 
         // store reference to this to children to makes sure we don't get
         // destroyed too early
