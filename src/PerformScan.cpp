@@ -577,6 +577,30 @@ void PerformScan::updateSystemConfiguration(
     }
 }
 
+static bool registerProbeInterface(
+        boost::container::flat_set<std::string>& dbusProbeInterfaces,
+        const nlohmann::json& probeJson)
+{
+    const std::string* probe = probeJson.get_ptr<const std::string*>();
+    if (probe == nullptr)
+    {
+        std::cerr << "Probe statement wasn't a string, can't parse";
+        return false;
+    }
+
+    if (findProbeType(probe->c_str()))
+    {
+        return false;
+    }
+
+    // syntax requires probe before first open brace
+    auto findStart = probe->find('(');
+    std::string interface = probe->substr(0, findStart);
+    dbusProbeInterfaces.emplace(interface);
+
+    return true;
+}
+
 void PerformScan::run()
 {
     boost::container::flat_set<std::string> dbusProbeInterfaces;
@@ -631,21 +655,10 @@ void PerformScan::run()
         // map
         for (const nlohmann::json& probeJson : probeCommand)
         {
-            const std::string* probe = probeJson.get_ptr<const std::string*>();
-            if (probe == nullptr)
+            if (registerProbeInterface(dbusProbeInterfaces, probeJson))
             {
-                std::cerr << "Probe statement wasn't a string, can't parse";
-                continue;
+                dbusProbePointers.emplace_back(probePointer);
             }
-            if (findProbeType(probe->c_str()))
-            {
-                continue;
-            }
-            // syntax requires probe before first open brace
-            auto findStart = probe->find('(');
-            std::string interface = probe->substr(0, findStart);
-            dbusProbeInterfaces.emplace(interface);
-            dbusProbePointers.emplace_back(probePointer);
         }
         it++;
     }
