@@ -466,7 +466,7 @@ static std::string generateDeviceName(const std::set<nlohmann::json>& usedNames,
 
 void PerformScan::updateSystemConfiguration(
     const nlohmann::json& recordRef, const std::string& probeName,
-    FoundDevices& foundDevices, const MapperGetSubTreeResponse& dbusSubtree)
+    FoundDevices& foundDevices)
 {
     _passed = true;
     passedProbes.push_back(probeName);
@@ -515,9 +515,9 @@ void PerformScan::updateSystemConfiguration(
         // interface, such as if it was just TRUE, then
         // templateCharReplace will just get passed in an empty
         // map.
-        auto objectIt = dbusSubtree.find(path);
+        auto objectIt = dbusProbeObjects.find(path);
         const DBusObject& dbusObject =
-            (objectIt == dbusSubtree.end()) ? emptyObject : objectIt->second;
+            (objectIt == dbusProbeObjects.end()) ? emptyObject : objectIt->second;
 
         nlohmann::json record = recordRef;
         std::string recordName = getRecordName(foundDevice, probeName);
