@@ -219,18 +219,20 @@ bool probe(const std::vector<std::string>& probeCommand,
 }
 
 PerformProbe::PerformProbe(
+    nlohmann::json& recordRef,
     const std::vector<std::string>& probeCommand,
-    std::shared_ptr<PerformScan>& scanPtr,
-    std::function<void(FoundDevices&, const MapperGetSubTreeResponse&)>&&
-        callback) :
+    std::string probeName,
+    std::shared_ptr<PerformScan>& scanPtr) :
+    recordRef(recordRef),
     _probeCommand(probeCommand),
-    scan(scanPtr), _callback(std::move(callback))
+    probeName(probeName),
+    scan(scanPtr)
 {}
 PerformProbe::~PerformProbe()
 {
     FoundDevices foundDevs;
     if (probe(_probeCommand, scan, foundDevs))
     {
-        _callback(foundDevs, scan->dbusProbeObjects);
+        scan->updateSystemConfiguration(recordRef, probeName, foundDevs, scan->dbusProbeObjects);
     }
 }
