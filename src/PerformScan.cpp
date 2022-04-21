@@ -580,8 +580,7 @@ void PerformScan::updateSystemConfiguration(
 static std::string extractDBusProbeInterface(const std::string* probe)
 {
     // syntax requires probe before first open brace
-    auto findStart = probe->find('(');
-    return probe->substr(0, findStart);
+    return probe->substr(0, probe->find('('));
 }
 
 static bool registerProbeInterface(
