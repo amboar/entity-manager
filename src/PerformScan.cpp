@@ -579,16 +579,15 @@ void PerformScan::updateSystemConfiguration(
 
 static nlohmann::json makeIterableProbe(const nlohmann::json& probe)
 {
-    if (probe.type() != nlohmann::json::value_t::array)
-    {
-        nlohmann::json probeCommand = nlohmann::json::array();
-        probeCommand.push_back(probe);
-        return probeCommand;
-    }
-    else
+    if (probe.type() == nlohmann::json::value_t::array)
     {
         return {probe};
     }
+
+    nlohmann::json probeCommand = nlohmann::json::array();
+    probeCommand.push_back(probe);
+
+    return probeCommand;
 }
 
 static std::string extractDBusProbeInterface(const std::string* probe)
