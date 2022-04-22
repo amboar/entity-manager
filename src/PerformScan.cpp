@@ -65,7 +65,7 @@ static std::string extractDBusProbeInterface(const std::string* probe)
     return probe->substr(0, probe->find('('));
 }
 
-static bool registerProbeInterface(
+static void registerProbeInterface(
         boost::container::flat_set<std::string>& dbusProbeInterfaces,
         const nlohmann::json& probeJson)
 {
@@ -73,51 +73,78 @@ static bool registerProbeInterface(
     if (probe == nullptr)
     {
         std::cerr << "Probe statement wasn't a string, can't parse";
-        return false;
+        return;
     }
 
     if (findProbeType(probe->c_str()))
     {
-        return false;
+        return;
     }
 
     dbusProbeInterfaces.emplace(extractDBusProbeInterface(probe));
-
-    return true;
 }
 
 // this class finds the needed dbus fields and on destruction runs the probe
-struct PerformProbe : std::enable_shared_from_this<PerformProbe>
+class PerformProbe : std::enable_shared_from_this<PerformProbe>
 {
+  public:
     PerformProbe(
         nlohmann::json& recordRef,
-        const std::vector<std::string>& probeCommand,
+        const nlohmann::json& probeNode,
         std::string probeName,
         std::shared_ptr<PerformScan>& scanPtr) :
         recordRef(recordRef),
-        _probeCommand(probeCommand),
+        _probeCommand(makeIterableProbe(probeNode)),
         probeName(probeName),
         scan(scanPtr)
-    {}
+    {
+        // parse out dbus probes by discarding other probe types, store in a
+        // map
+        for (const nlohmann::json& probeJson : makeIterableProbe(probeNode))
+        {
+            registerProbeInterface(dbusProbeInterfaces, probeJson);
+        }
+    }
+
+    bool specifiesDBusProbes()
+    {
+        return !dbusProbeInterfaces.empty();
+    }
+
+    void collectDBusProbes(boost::container::flat_set<std::string>& set)
+    {
+        set.insert(dbusProbeInterfaces.begin(), dbusProbeInterfaces.end());
+    }
+
+    void registerInterest(const std::string& interface,
+            std::vector<std::shared_ptr<PerformProbe>>& interested)
+    {
+        if (dbusProbeInterfaces.contains(interface))
+        {
+            interested.push_back(shared_from_this());
+        }
+    }
 
     virtual ~PerformProbe()
     {
         FoundDevices foundDevs;
-        if (probe(_probeCommand, scan, foundDevs))
+        if (specifiesDBusProbes() && probe(_probeCommand, scan, foundDevs))
         {
             scan->updateSystemConfiguration(recordRef, probeName, foundDevs);
         }
     }
 
+  private:
     nlohmann::json& recordRef;
     std::vector<std::string> _probeCommand;
     std::string probeName;
     std::shared_ptr<PerformScan> scan;
+    boost::container::flat_set<std::string> dbusProbeInterfaces;
 };
 
 static void getInterfaces(
     const DBusInterfaceInstance& instance,
-    const std::vector<std::shared_ptr<PerformProbe>>& probeVector,
+    const std::vector<std::shared_ptr<PerformProbe>>&& probeVector,
     const std::shared_ptr<PerformScan>& scan, size_t retries = 5)
 {
     if (!retries)
@@ -128,7 +155,7 @@ static void getInterfaces(
     }
 
     systemBus->async_method_call(
-        [instance, scan, probeVector, retries](boost::system::error_code& errc,
+        [instance, scan, probeVector{std::move(probeVector)}, retries](boost::system::error_code& errc,
                                                const DBusInterface& resp) {
             if (errc)
             {
@@ -141,7 +168,7 @@ static void getInterfaces(
 
                 timer->async_wait([timer, instance, scan, probeVector,
                                    retries](const boost::system::error_code&) {
-                    getInterfaces(instance, probeVector, scan, retries - 1);
+                    getInterfaces(instance, std::move(probeVector), scan, retries - 1);
                 });
                 return;
             }
@@ -200,9 +227,21 @@ static void
                 // Introspectable, and Properties) are returned by
                 // the mapper but don't have properties, so don't bother
                 // with the GetAll call to save some cycles.
-                if (!boost::algorithm::starts_with(iface, "org.freedesktop"))
+                if (boost::algorithm::starts_with(iface, "org.freedesktop"))
                 {
-                    getInterfaces({busname, path, iface}, probeVector, scan);
+                    continue;
+                }
+
+                std::vector<std::shared_ptr<PerformProbe>> probesForIface;
+
+                for (auto& probe : probeVector)
+                {
+                    probe->registerInterest(iface, probesForIface);
+                }
+
+                if (!probesForIface.empty())
+                {
+                    getInterfaces({busname, path, iface}, std::move(probesForIface), scan);
                 }
             }
         }
@@ -212,10 +251,17 @@ static void
 // Populates scan->dbusProbeObjects with all interfaces and properties
 // for the paths that own the interfaces passed in.
 static void findDbusObjects(std::vector<std::shared_ptr<PerformProbe>>&& probeVector,
-                     boost::container::flat_set<std::string>&& interfaces,
                      const std::shared_ptr<PerformScan>& scan,
                      size_t retries = 5)
 {
+    boost::container::flat_set<std::string> interfaces;
+
+    // Generate a flattened set of interfaces from Probe statements
+    for (auto& probe : probeVector)
+    {
+        probe->collectDBusProbes(interfaces);
+    }
+
     // Filter out interfaces already obtained.
     for (const auto& [path, probeInterfaces] : scan->dbusProbeObjects)
     {
@@ -224,6 +270,7 @@ static void findDbusObjects(std::vector<std::shared_ptr<PerformProbe>>&& probeVe
             interfaces.erase(interface);
         }
     }
+
     if (interfaces.empty())
     {
         return;
@@ -256,9 +303,7 @@ static void findDbusObjects(std::vector<std::shared_ptr<PerformProbe>>&& probeVe
                     [timer, interfaces{std::move(interfaces)}, scan,
                      probeVector{std::move(probeVector)},
                      retries](const boost::system::error_code&) mutable {
-                        findDbusObjects(std::move(probeVector),
-                                        std::move(interfaces), scan,
-                                        retries - 1);
+                        findDbusObjects(std::move(probeVector), scan, retries - 1);
                     });
                 return;
             }
@@ -649,8 +694,7 @@ void PerformScan::updateSystemConfiguration(
 
 void PerformScan::run()
 {
-    boost::container::flat_set<std::string> dbusProbeInterfaces;
-    std::vector<std::shared_ptr<PerformProbe>> dbusProbePointers;
+    std::vector<std::shared_ptr<PerformProbe>> probePointers;
 
     for (auto it = _configurations.begin(); it != _configurations.end();)
     {
@@ -679,31 +723,17 @@ void PerformScan::run()
             continue;
         }
 
-        nlohmann::json& recordRef = *it;
-        nlohmann::json probeCommand = makeIterableProbe(*findProbe);
+        auto scanPtr = shared_from_this();
+        auto prober = std::make_shared<PerformProbe>(*it, *findProbe, probeName, scanPtr);
+        probePointers.push_back(std::move(prober));
 
-        // store reference to this to children to makes sure we don't get
-        // destroyed too early
-        auto thisRef = shared_from_this();
-        auto probePointer = std::make_shared<PerformProbe>(
-            recordRef, probeCommand, probeName, thisRef);
-
-        // parse out dbus probes by discarding other probe types, store in a
-        // map
-        for (const nlohmann::json& probeJson : probeCommand)
-        {
-            if (registerProbeInterface(dbusProbeInterfaces, probeJson))
-            {
-                dbusProbePointers.emplace_back(probePointer);
-            }
-        }
         it++;
     }
 
     // probe vector stores a shared_ptr to each PerformProbe that cares
     // about a dbus interface
-    findDbusObjects(std::move(dbusProbePointers),
-                    std::move(dbusProbeInterfaces), shared_from_this());
+    findDbusObjects(std::move(probePointers), shared_from_this());
+
     if constexpr (debug)
     {
         std::cerr << __func__ << " " << __LINE__ << "\n";
