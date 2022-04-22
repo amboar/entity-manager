@@ -46,6 +46,46 @@ struct DBusInterfaceInstance
     std::string interface;
 };
 
+static nlohmann::json makeIterableProbe(const nlohmann::json& probe)
+{
+    if (probe.type() == nlohmann::json::value_t::array)
+    {
+        return {probe};
+    }
+
+    nlohmann::json probeCommand = nlohmann::json::array();
+    probeCommand.push_back(probe);
+
+    return probeCommand;
+}
+
+static std::string extractDBusProbeInterface(const std::string* probe)
+{
+    // syntax requires probe before first open brace
+    return probe->substr(0, probe->find('('));
+}
+
+static bool registerProbeInterface(
+        boost::container::flat_set<std::string>& dbusProbeInterfaces,
+        const nlohmann::json& probeJson)
+{
+    const std::string* probe = probeJson.get_ptr<const std::string*>();
+    if (probe == nullptr)
+    {
+        std::cerr << "Probe statement wasn't a string, can't parse";
+        return false;
+    }
+
+    if (findProbeType(probe->c_str()))
+    {
+        return false;
+    }
+
+    dbusProbeInterfaces.emplace(extractDBusProbeInterface(probe));
+
+    return true;
+}
+
 // this class finds the needed dbus fields and on destruction runs the probe
 struct PerformProbe : std::enable_shared_from_this<PerformProbe>
 {
@@ -605,46 +645,6 @@ void PerformScan::updateSystemConfiguration(
         _systemConfiguration[recordName] = record;
         _missingConfigurations.erase(recordName);
     }
-}
-
-static nlohmann::json makeIterableProbe(const nlohmann::json& probe)
-{
-    if (probe.type() == nlohmann::json::value_t::array)
-    {
-        return {probe};
-    }
-
-    nlohmann::json probeCommand = nlohmann::json::array();
-    probeCommand.push_back(probe);
-
-    return probeCommand;
-}
-
-static std::string extractDBusProbeInterface(const std::string* probe)
-{
-    // syntax requires probe before first open brace
-    return probe->substr(0, probe->find('('));
-}
-
-static bool registerProbeInterface(
-        boost::container::flat_set<std::string>& dbusProbeInterfaces,
-        const nlohmann::json& probeJson)
-{
-    const std::string* probe = probeJson.get_ptr<const std::string*>();
-    if (probe == nullptr)
-    {
-        std::cerr << "Probe statement wasn't a string, can't parse";
-        return false;
-    }
-
-    if (findProbeType(probe->c_str()))
-    {
-        return false;
-    }
-
-    dbusProbeInterfaces.emplace(extractDBusProbeInterface(probe));
-
-    return true;
 }
 
 void PerformScan::run()
