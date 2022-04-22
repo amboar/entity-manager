@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "DBusData.hpp"
 #include "Utils.hpp"
 
 #include <systemd/sd-journal.h>
@@ -29,14 +30,6 @@
 #include <list>
 #include <optional>
 #include <string>
-
-struct DBusDeviceDescriptor
-{
-    DBusInterface interface;
-    std::string path;
-};
-
-using FoundDevices = std::vector<DBusDeviceDescriptor>;
 
 struct CmpStr
 {

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "DBusData.hpp"
+
 #include <boost/container/flat_map.hpp>
 #include <nlohmann/json.hpp>
 #include <sdbusplus/asio/connection.hpp>
@@ -31,14 +33,6 @@ constexpr const char* versionHashFile = "/var/configuration/version";
 constexpr const char* versionFile = "/etc/os-release";
 
 extern boost::asio::io_context io;
-
-using DBusValueVariant =
-    std::variant<std::string, int64_t, uint64_t, double, int32_t, uint32_t,
-                 int16_t, uint16_t, uint8_t, bool, std::vector<uint8_t>>;
-using DBusInterface = boost::container::flat_map<std::string, DBusValueVariant>;
-using DBusObject = boost::container::flat_map<std::string, DBusInterface>;
-using MapperGetSubTreeResponse =
-    boost::container::flat_map<std::string, DBusObject>;
 
 namespace properties
 {
