@@ -75,7 +75,7 @@ struct PerformProbe : std::enable_shared_from_this<PerformProbe>
     std::shared_ptr<PerformScan> scan;
 };
 
-void getInterfaces(
+static void getInterfaces(
     const DBusInterfaceInstance& instance,
     const std::vector<std::shared_ptr<PerformProbe>>& probeVector,
     const std::shared_ptr<PerformScan>& scan, size_t retries = 5)
@@ -171,7 +171,7 @@ static void
 
 // Populates scan->dbusProbeObjects with all interfaces and properties
 // for the paths that own the interfaces passed in.
-void findDbusObjects(std::vector<std::shared_ptr<PerformProbe>>&& probeVector,
+static void findDbusObjects(std::vector<std::shared_ptr<PerformProbe>>&& probeVector,
                      boost::container::flat_set<std::string>&& interfaces,
                      const std::shared_ptr<PerformScan>& scan,
                      size_t retries = 5)
