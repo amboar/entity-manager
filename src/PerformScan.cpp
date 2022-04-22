@@ -577,6 +577,13 @@ void PerformScan::updateSystemConfiguration(
     }
 }
 
+static std::string extractDBusProbeInterface(const std::string* probe)
+{
+    // syntax requires probe before first open brace
+    auto findStart = probe->find('(');
+    return probe->substr(0, findStart);
+}
+
 static bool registerProbeInterface(
         boost::container::flat_set<std::string>& dbusProbeInterfaces,
         const nlohmann::json& probeJson)
@@ -593,10 +600,7 @@ static bool registerProbeInterface(
         return false;
     }
 
-    // syntax requires probe before first open brace
-    auto findStart = probe->find('(');
-    std::string interface = probe->substr(0, findStart);
-    dbusProbeInterfaces.emplace(interface);
+    dbusProbeInterfaces.emplace(extractDBusProbeInterface(probe));
 
     return true;
 }
