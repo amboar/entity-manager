@@ -17,8 +17,6 @@
 
 #pragma once
 
-#include "DBusData.hpp"
-#include "PerformScan.hpp"
 #include "Utils.hpp"
 
 #include <systemd/sd-journal.h>
@@ -31,30 +29,6 @@
 #include <list>
 #include <optional>
 #include <string>
-
-struct CmpStr
-{
-    bool operator()(const char* a, const char* b) const
-    {
-        return std::strcmp(a, b) < 0;
-    }
-};
-
-// underscore T for collison with dbus c api
-enum class probe_type_codes
-{
-    FALSE_T,
-    TRUE_T,
-    AND,
-    OR,
-    FOUND,
-    MATCH_ONE
-};
-
-using FoundProbeTypeT =
-    std::optional<boost::container::flat_map<const char*, probe_type_codes,
-                                             CmpStr>::const_iterator>;
-FoundProbeTypeT findProbeType(const std::string& probe);
 
 inline void logDeviceAdded(const nlohmann::json& record)
 {

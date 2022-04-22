@@ -16,6 +16,7 @@
 /// \file PerformScan.cpp
 #include "EntityManager.hpp"
 #include "PerformProbe.hpp"
+#include "Probe.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/steady_timer.hpp>

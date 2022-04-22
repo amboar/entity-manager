@@ -22,5 +22,35 @@
 #include <string>
 #include <vector>
 
+struct CmpStr
+{
+    bool operator()(const char* a, const char* b) const
+    {
+        return std::strcmp(a, b) < 0;
+    }
+};
+
+// underscore T for collison with dbus c api
+enum class probe_type_codes
+{
+    FALSE_T,
+    TRUE_T,
+    AND,
+    OR,
+    FOUND,
+    MATCH_ONE
+};
+
+using FoundProbeTypeT =
+    std::optional<boost::container::flat_map<const char*, probe_type_codes,
+                                             CmpStr>::const_iterator>;
+FoundProbeTypeT findProbeType(const std::string& probe);
+
+/// \brief Match a Dbus property against a probe statement.
+/// \param probe the probe statement to match against.
+/// \param dbusValue the property value being matched to a probe.
+/// \return true if the dbusValue matched the probe otherwise false.
+bool matchProbe(const nlohmann::json& probe, const DBusValueVariant& dbusValue);
+
 bool probe(const std::vector<std::string>& probeCommand,
            const std::shared_ptr<PerformScan>& scan, FoundDevices& foundDevs);

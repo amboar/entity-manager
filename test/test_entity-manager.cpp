@@ -1,4 +1,5 @@
 #include "Utils.hpp"
+#include "Probe.hpp"
 
 #include <nlohmann/json.hpp>
 

@@ -16,7 +16,6 @@
 */
 /// \file Probe.cpp
 
-#include "EntityManager.hpp"
 #include "Probe.hpp"
 #include "Utils.hpp"
 
@@ -26,6 +25,99 @@
 #include <regex>
 
 constexpr const bool debug = false;
+
+const boost::container::flat_map<const char*, probe_type_codes, CmpStr>
+    probeTypes{{{"FALSE", probe_type_codes::FALSE_T},
+                {"TRUE", probe_type_codes::TRUE_T},
+                {"AND", probe_type_codes::AND},
+                {"OR", probe_type_codes::OR},
+                {"FOUND", probe_type_codes::FOUND},
+                {"MATCH_ONE", probe_type_codes::MATCH_ONE}}};
+
+FoundProbeTypeT findProbeType(const std::string& probe)
+{
+    boost::container::flat_map<const char*, probe_type_codes,
+                               CmpStr>::const_iterator probeType;
+    for (probeType = probeTypes.begin(); probeType != probeTypes.end();
+         ++probeType)
+    {
+        if (probe.find(probeType->first) != std::string::npos)
+        {
+            return probeType;
+        }
+    }
+
+    return std::nullopt;
+}
+
+/// \brief JSON/DBus matching Callable for std::variant (visitor)
+///
+/// Default match JSON/DBus match implementation
+/// \tparam T The concrete DBus value type from DBusValueVariant
+template <typename T>
+struct MatchProbe
+{
+    /// \param probe the probe statement to match against
+    /// \param value the property value being matched to a probe
+    /// \return true if the dbusValue matched the probe otherwise false
+    static bool match(const nlohmann::json& probe, const T& value)
+    {
+        return probe == value;
+    }
+};
+
+/// \brief JSON/DBus matching Callable for std::variant (visitor)
+///
+/// std::string specialization of MatchProbe enabling regex matching
+template <>
+struct MatchProbe<std::string>
+{
+    /// \param probe the probe statement to match against
+    /// \param value the string value being matched to a probe
+    /// \return true if the dbusValue matched the probe otherwise false
+    static bool match(const nlohmann::json& probe, const std::string& value)
+    {
+        if (probe.is_string())
+        {
+            try
+            {
+                std::regex search(probe);
+                std::smatch regMatch;
+                return std::regex_search(value, regMatch, search);
+            }
+            catch (const std::regex_error&)
+            {
+                std::cerr << "Syntax error in regular expression: " << probe
+                          << " will never match";
+            }
+        }
+
+        // Skip calling nlohmann here, since it will never match a non-string
+        // to a std::string
+        return false;
+    }
+};
+
+/// \brief Forwarding JSON/DBus matching Callable for std::variant (visitor)
+///
+/// Forward calls to the correct template instantiation of MatchProbe
+struct MatchProbeForwarder
+{
+    explicit MatchProbeForwarder(const nlohmann::json& probe) : probeRef(probe)
+    {}
+    const nlohmann::json& probeRef;
+
+    template <typename T>
+    bool operator()(const T& dbusValue) const
+    {
+        return MatchProbe<T>::match(probeRef, dbusValue);
+    }
+};
+
+bool matchProbe(const nlohmann::json& probe, const DBusValueVariant& dbusValue)
+{
+    return std::visit(MatchProbeForwarder(probe), dbusValue);
+}
 
 // probes dbus interface dictionary for a key with a value that matches a regex
 // When an interface passes a probe, also save its D-Bus path with it.
