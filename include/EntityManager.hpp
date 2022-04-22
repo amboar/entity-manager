@@ -18,6 +18,7 @@
 #pragma once
 
 #include "DBusData.hpp"
+#include "PerformScan.hpp"
 #include "Utils.hpp"
 
 #include <systemd/sd-journal.h>
@@ -54,29 +55,6 @@ using FoundProbeTypeT =
     std::optional<boost::container::flat_map<const char*, probe_type_codes,
                                              CmpStr>::const_iterator>;
 FoundProbeTypeT findProbeType(const std::string& probe);
-
-struct PerformScan : std::enable_shared_from_this<PerformScan>
-{
-
-    PerformScan(nlohmann::json& systemConfiguration,
-                nlohmann::json& missingConfigurations,
-                std::list<nlohmann::json>& configurations,
-                sdbusplus::asio::object_server& objServer,
-                std::function<void()>&& callback);
-    void updateSystemConfiguration(const nlohmann::json& recordRef,
-                                   const std::string& probeName,
-                                   FoundDevices& foundDevices);
-    void run(void);
-    virtual ~PerformScan();
-    nlohmann::json& _systemConfiguration;
-    nlohmann::json& _missingConfigurations;
-    std::list<nlohmann::json> _configurations;
-    sdbusplus::asio::object_server& objServer;
-    std::function<void()> _callback;
-    bool _passed = false;
-    MapperGetSubTreeResponse dbusProbeObjects;
-    std::vector<std::string> passedProbes;
-};
 
 // this class finds the needed dbus fields and on destruction runs the probe
 struct PerformProbe : std::enable_shared_from_this<PerformProbe>
