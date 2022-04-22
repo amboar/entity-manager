@@ -56,22 +56,6 @@ using FoundProbeTypeT =
                                              CmpStr>::const_iterator>;
 FoundProbeTypeT findProbeType(const std::string& probe);
 
-// this class finds the needed dbus fields and on destruction runs the probe
-struct PerformProbe : std::enable_shared_from_this<PerformProbe>
-{
-    PerformProbe(
-        nlohmann::json& recordRef,
-        const std::vector<std::string>& probeCommand,
-        std::string probeName,
-        std::shared_ptr<PerformScan>& scanPtr);
-    virtual ~PerformProbe();
-
-    nlohmann::json& recordRef;
-    std::vector<std::string> _probeCommand;
-    std::string probeName;
-    std::shared_ptr<PerformScan> scan;
-};
-
 inline void logDeviceAdded(const nlohmann::json& record)
 {
 

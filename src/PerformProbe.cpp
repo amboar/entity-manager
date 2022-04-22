@@ -15,6 +15,8 @@
 */
 /// \file PerformProbe.cpp
 #include "EntityManager.hpp"
+#include "PerformProbe.hpp"
+#include "Utils.hpp"
 
 #include <boost/algorithm/string/replace.hpp>
 
