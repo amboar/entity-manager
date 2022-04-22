@@ -6,7 +6,6 @@ executable(
     'EntityManager.cpp',
     'Expression.cpp',
     'PerformScan.cpp',
-    'PerformProbe.cpp',
     'Probe.cpp',
     'Overlay.cpp',
     'Utils.cpp',

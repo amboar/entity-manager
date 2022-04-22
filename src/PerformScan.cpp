@@ -15,7 +15,6 @@
 */
 /// \file PerformScan.cpp
 #include "EntityManager.hpp"
-#include "PerformProbe.hpp"
 #include "Probe.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -45,6 +44,35 @@ struct DBusInterfaceInstance
     std::string busName;
     std::string path;
     std::string interface;
+};
+
+// this class finds the needed dbus fields and on destruction runs the probe
+struct PerformProbe : std::enable_shared_from_this<PerformProbe>
+{
+    PerformProbe(
+        nlohmann::json& recordRef,
+        const std::vector<std::string>& probeCommand,
+        std::string probeName,
+        std::shared_ptr<PerformScan>& scanPtr) :
+        recordRef(recordRef),
+        _probeCommand(probeCommand),
+        probeName(probeName),
+        scan(scanPtr)
+    {}
+
+    virtual ~PerformProbe()
+    {
+        FoundDevices foundDevs;
+        if (probe(_probeCommand, scan, foundDevs))
+        {
+            scan->updateSystemConfiguration(recordRef, probeName, foundDevs);
+        }
+    }
+
+    nlohmann::json& recordRef;
+    std::vector<std::string> _probeCommand;
+    std::string probeName;
+    std::shared_ptr<PerformScan> scan;
 };
 
 void getInterfaces(
