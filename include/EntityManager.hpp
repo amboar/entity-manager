@@ -62,13 +62,6 @@ using FoundProbeTypeT =
                                              CmpStr>::const_iterator>;
 FoundProbeTypeT findProbeType(const std::string& probe);
 
-struct DBusInterfaceInstance
-{
-    std::string busName;
-    std::string path;
-    std::string interface;
-};
-
 struct PerformScan : std::enable_shared_from_this<PerformScan>
 {
 
@@ -80,7 +73,6 @@ struct PerformScan : std::enable_shared_from_this<PerformScan>
     void updateSystemConfiguration(const nlohmann::json& recordRef,
                                    const std::string& probeName,
                                    FoundDevices& foundDevices);
-    void registerInterface(const DBusInterfaceInstance& instance, const DBusInterface& interface);
     void run(void);
     virtual ~PerformScan();
     nlohmann::json& _systemConfiguration;

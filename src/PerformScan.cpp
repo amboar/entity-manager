@@ -38,11 +38,12 @@ constexpr const int32_t maxMapperDepth = 0;
 
 constexpr const bool debug = false;
 
-void PerformScan::registerInterface(const DBusInterfaceInstance& instance, const DBusInterface&
-        interface)
+struct DBusInterfaceInstance
 {
-    dbusProbeObjects[instance.path][instance.interface] = interface;
-}
+    std::string busName;
+    std::string path;
+    std::string interface;
+};
 
 void getInterfaces(
     const DBusInterfaceInstance& instance,
@@ -74,7 +75,8 @@ void getInterfaces(
                 });
                 return;
             }
-            scan->registerInterface(instance, resp);
+
+            scan->dbusProbeObjects[instance.path][instance.interface] = resp;
         },
         instance.busName, instance.path, "org.freedesktop.DBus.Properties",
         "GetAll", instance.interface);
