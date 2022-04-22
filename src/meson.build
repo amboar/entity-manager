@@ -7,6 +7,7 @@ executable(
     'Expression.cpp',
     'PerformScan.cpp',
     'PerformProbe.cpp',
+    'Probe.cpp',
     'Overlay.cpp',
     'Utils.cpp',
     cpp_args: cpp_args + ['-DBOOST_ASIO_DISABLE_THREADS'],
