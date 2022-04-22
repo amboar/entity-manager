@@ -29,7 +29,7 @@ constexpr const bool debug = false;
 
 // probes dbus interface dictionary for a key with a value that matches a regex
 // When an interface passes a probe, also save its D-Bus path with it.
-bool probeDbus(const std::string& interfaceName,
+static bool probeDbus(const std::string& interfaceName,
                const std::map<std::string, nlohmann::json>& matches,
                FoundDevices& devices, const std::shared_ptr<PerformScan>& scan,
                bool& foundProbe)
