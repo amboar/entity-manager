@@ -18,14 +18,7 @@ boost_args = [
 ]
 build_tests = get_option('tests')
 cpp = meson.get_compiler('cpp')
-boost = dependency('boost', required: false)
-if not boost.found()
-    subproject('boost', required: false)
-    boost = declare_dependency(
-        include_directories: 'subprojects/boost_1_71_0',
-    )
-    boost = boost.as_system('system')
-endif
+boost = dependency('boost', version: '>=1.83.0', include_type: 'system')
 if get_option('fru-device')
     i2c = cpp.find_library('i2c')
 endif
