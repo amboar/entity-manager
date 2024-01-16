@@ -1,11 +1,7 @@
 project(
     'entity-manager',
     'cpp',
-    default_options: [
-        'warning_level=3',
-        'werror=true',
-        'cpp_std=c++20'
-    ],
+    default_options: ['warning_level=3', 'werror=true', 'cpp_std=c++20'],
     license: 'Apache-2.0',
     version: '0.1',
     meson_version: '>=0.58.0',
@@ -18,17 +14,17 @@ boost_args = [
     '-DBOOST_NO_RTTI',
     '-DBOOST_NO_TYPEID',
     '-DBOOST_ALL_NO_LIB',
-    '-DBOOST_ALLOW_DEPRECATED_HEADERS'
+    '-DBOOST_ALLOW_DEPRECATED_HEADERS',
 ]
 build_tests = get_option('tests')
 cpp = meson.get_compiler('cpp')
 boost = dependency('boost', required: false)
 if not boost.found()
-     subproject('boost', required: false)
-     boost = declare_dependency(
-         include_directories: 'subprojects/boost_1_71_0',
-     )
-     boost = boost.as_system('system')
+    subproject('boost', required: false)
+    boost = declare_dependency(
+        include_directories: 'subprojects/boost_1_71_0',
+    )
+    boost = boost.as_system('system')
 endif
 if get_option('fru-device')
     i2c = cpp.find_library('i2c')
@@ -45,7 +41,8 @@ endif
 systemd = dependency('systemd')
 systemd_system_unit_dir = systemd.get_variable(
     'systemdsystemunitdir',
-    pkgconfig_define: ['prefix', get_option('prefix')])
+    pkgconfig_define: ['prefix', get_option('prefix')],
+)
 packagedir = join_paths(
     get_option('prefix'),
     get_option('datadir'),
@@ -62,7 +59,7 @@ if cpp.has_header('valijson/validator.hpp')
 else
     subproject('valijson', required: false)
     valijson = declare_dependency(
-        include_directories: 'subprojects/valijson/include'
+        include_directories: 'subprojects/valijson/include',
     )
     valijson = valijson.as_system('system')
 endif
@@ -190,23 +187,23 @@ foreach c : configs
         install_dir: join_paths(
             packagedir,
             'configurations',
-        )
+        ),
     )
     filepaths += [file]
 endforeach
 
 validate_script = files('scripts/validate_configs.py')
 autojson = custom_target(
-  'check_syntax',
-  command: [
-    validate_script,
-    '-v',
-    '-k',
-  ],
-  depend_files: files(filepaths),
-  build_by_default: true,
-  capture: true,
-  output: 'validate_configs.log',
+    'check_syntax',
+    command: [
+        validate_script,
+        '-v',
+        '-k',
+    ],
+    depend_files: files(filepaths),
+    build_by_default: true,
+    capture: true,
+    output: 'validate_configs.log',
 )
 
 schemas = [
@@ -229,7 +226,7 @@ foreach s : schemas
             packagedir,
             'configurations',
             'schemas',
-        )
+        ),
     )
 endforeach
 
@@ -245,7 +242,9 @@ if not build_tests.disabled()
         gtest_subproject = cmake.subproject('gtest')
         cm_gtest = gtest_subproject.dependency('gtest')
         cm_gtest_main = gtest_subproject.dependency('gtest_main')
-        gtest = declare_dependency(dependencies: [cm_gtest, cm_gtest_main, threads])
+        gtest = declare_dependency(
+            dependencies: [cm_gtest, cm_gtest_main, threads],
+        )
         gmock = gtest_subproject.dependency('gmock')
 
     endif
@@ -266,7 +265,7 @@ if not build_tests.disabled()
                 valijson,
             ],
             include_directories: 'src',
-        )
+        ),
     )
 
     test(
@@ -283,7 +282,7 @@ if not build_tests.disabled()
                 sdbusplus,
             ],
             include_directories: 'src',
-        )
+        ),
     )
 
     test(
@@ -299,6 +298,6 @@ if not build_tests.disabled()
                 nlohmann_json_dep,
             ],
             include_directories: 'src',
-        )
+        ),
     )
 endif
