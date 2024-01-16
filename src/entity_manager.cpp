@@ -73,6 +73,10 @@ boost::container::flat_map<
     std::string, std::vector<std::weak_ptr<sdbusplus::asio::dbus_interface>>>
     inventory;
 
+boost::container::flat_map<std::string,
+                           std::function<void(const nlohmann::json&)>>
+    exposesAdapters;
+
 // todo: pass this through nicer
 std::shared_ptr<sdbusplus::asio::connection> systemBus;
 nlohmann::json lastJson;
@@ -724,6 +728,12 @@ void postToDbus(const nlohmann::json& newConfiguration,
                                           getPermission(itemType));
             }
 
+            auto adapterEntry = exposesAdapters.find(itemType);
+            if (adapterEntry != exposesAdapters.end())
+            {
+                adapterEntry->second(item);
+            }
+
             populateInterfaceFromJson(systemConfiguration, jsonPointerPath,
                                       itemIface, item, objServer,
                                       getPermission(itemType));
@@ -743,7 +753,6 @@ void postToDbus(const nlohmann::json& newConfiguration,
                     std::shared_ptr<sdbusplus::asio::dbus_interface>
                         objectIface = createInterface(objServer, ifacePath,
                                                       ifaceName, boardNameOrig);
-
                     populateInterfaceFromJson(
                         systemConfiguration, jsonPointerPath, objectIface,
                         config, objServer, getPermission(name));
@@ -1238,6 +1247,46 @@ int main()
     // setup connection to dbus
     systemBus = std::make_shared<sdbusplus::asio::connection>(io);
     systemBus->request_name("xyz.openbmc_project.EntityManager");
+
+    exposesAdapters.emplace("MCTPEndpoint", [](const nlohmann::json& exposed) {
+        auto busProp = exposed.find("Bus");
+        if (busProp == exposed.end())
+        {
+            throw std::logic_error(
+                "Invalid schema: No 'Bus' property in 'MCTPEndpoint' node");
+        }
+        auto bus = busProp->get<int>();
+
+        auto addrProp = exposed.find("Address");
+        if (addrProp == exposed.end())
+        {
+            throw std::logic_error(
+                "Invalid schema: No 'Address' property in MCTPEndpoint' node");
+        }
+        auto addr = static_cast<uint8_t>(addrProp->get<int>());
+
+        auto eidProp = exposed.find("EndpointId");
+        if (eidProp == exposed.end())
+        {
+            throw std::logic_error(
+                "Invalid schema: No 'EndpointId' property in MCTPEndpoint' node");
+        }
+        auto eid = static_cast<uint8_t>(eidProp->get<int>());
+
+        systemBus->async_method_call(
+            [bus, addr, eid](const boost::system::error_code& ec) {
+            if (ec)
+            {
+                std::cerr << "Failed to set up " << std::to_string(bus) << ":"
+                          << std::to_string(addr) << " with EID " << eid << ": "
+                          << ec.message() << std::endl;
+                return;
+            }
+        },
+            "xyz.openbmc_project.MCTP", "/xyz/openbmc_project/mctp",
+            "au.com.CodeConstruct.MCTP", "AssignEndpointStatic",
+            "mctpi2c" + std::to_string(bus), std::vector<uint8_t>{addr}, eid);
+    });
 
     // The EntityManager object itself doesn't expose any properties.
     // No need to set up ObjectManager for the |EntityManager| object.
