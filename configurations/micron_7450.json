@@ -8,10 +8,11 @@
             "Type": "EEPROM"
         },
         {
-            "Address": "0x6a",
+            "Address": "0x1d",
             "Bus": "$bus",
             "Name": "NVMe $index Temp",
-            "Type": "NVME1000"
+            "EndpointId": "10",
+            "Type": "MCTPEndpoint"
         }
     ],
     "Logging": "Off",
